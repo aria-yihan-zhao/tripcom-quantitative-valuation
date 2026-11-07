@@ -1,0 +1,12 @@
+jupyter
+ipykernel
+pandas
+numpy
+numpy-financial
+scipy
+matplotlib
+seaborn
+requests
+beautifulsoup4
+yfinance
+openpyxl

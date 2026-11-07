@@ -218,3 +218,18 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project-specific data and privacy rules
+
+# Do not upload downloaded source files or private raw data
+data/raw/*
+!data/raw/.gitkeep
+
+# Do not upload local Excel workbooks
+*.xlsx
+*.xls
+
+# macOS system files
+.DS_Store
+# Local VS Code settings
+.vscode/
