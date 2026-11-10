@@ -2,7 +2,13 @@ import unittest
 
 import numpy as np
 
-from src.valuation import dcf_valuation, monte_carlo_prices, reported_summary_price
+from src.valuation import (
+    dcf_valuation,
+    monte_carlo_prices,
+    reported_summary_price,
+    three_stage_ddm,
+    weighted_relative_valuation,
+)
 
 
 FCFF = [
@@ -65,6 +71,27 @@ class ValuationTests(unittest.TestCase):
         second = monte_carlo_prices(FCFF, **kwargs)
         np.testing.assert_allclose(first, second)
         self.assertTrue(np.all(np.isfinite(first)))
+
+    def test_three_stage_ddm_is_close_to_published_base_case(self) -> None:
+        result = three_stage_ddm(
+            [10.59, 15.56, 18.12, 20.84, 23.67, 26.74, 29.81, 33.35, 37.18],
+            initial_cost_of_equity=0.0962,
+            ending_eps=69.90,
+            transition_years=9,
+            starting_eps_growth=0.09,
+            starting_payout_ratio=0.5318,
+            stable_eps_growth=0.045,
+            stable_payout_ratio=0.58,
+            stable_cost_of_equity=0.091,
+        )
+        self.assertAlmostEqual(result.implied_price, 585.81, places=1)
+        self.assertLess(abs(result.implied_price - 583.3) / 583.3, 0.01)
+
+    def test_weighted_relative_valuation_reproduces_report(self) -> None:
+        value = weighted_relative_valuation(
+            [615.9, 751.6, 1055.1], [0.75, 0.20, 0.05]
+        )
+        self.assertAlmostEqual(value, 665.0, places=1)
 
 
 if __name__ == "__main__":

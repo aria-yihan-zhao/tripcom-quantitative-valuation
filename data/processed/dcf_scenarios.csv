@@ -1,0 +1,4 @@
+scenario,revenue_deviation,gross_margin_deviation,global_market_share,retention_change,published_price_cny,published_upside
+Bear,-0.20,-0.20,0.12,-0.05,414,-0.20
+Base,0.00,0.00,0.15,0.00,626,0.21
+Bull,0.20,0.20,0.18,0.05,710,0.37

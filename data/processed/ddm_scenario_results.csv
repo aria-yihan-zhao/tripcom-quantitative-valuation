@@ -1,0 +1,4 @@
+scenario,stable_payout_ratio,stable_eps_growth,stable_cost_of_equity,published_price_cny,published_upside,modeled_price_cny
+Bear,0.48,0.033,0.095,409.6,-0.21,430.10696070057895
+Base,0.58,0.045,0.091,583.3,0.13,585.8131155666711
+Bull,0.62,0.047,0.09,647.6,0.25,643.4251282989713

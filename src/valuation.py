@@ -27,6 +27,17 @@ class DCFResult:
     terminal_value_share: float
 
 
+@dataclass(frozen=True)
+class DDMResult:
+    """Calculated components of a three-stage dividend discount model."""
+
+    pv_explicit_dividends: float
+    pv_transition_dividends: float
+    terminal_value: float
+    pv_terminal_value: float
+    implied_price: float
+
+
 def _validate_inputs(
     fcff: np.ndarray,
     wacc: float,
@@ -109,6 +120,93 @@ def reported_summary_price(
         raise ValueError("shares_outstanding must be positive")
     enterprise_value = pv_forecast_fcff + pv_terminal_value
     return (enterprise_value - net_debt) / shares_outstanding
+
+
+def three_stage_ddm(
+    explicit_dividends: Iterable[float],
+    *,
+    initial_cost_of_equity: float,
+    ending_eps: float,
+    transition_years: int,
+    starting_eps_growth: float,
+    starting_payout_ratio: float,
+    stable_eps_growth: float,
+    stable_payout_ratio: float,
+    stable_cost_of_equity: float,
+) -> DDMResult:
+    """Value dividends across explicit, transition, and stable stages.
+
+    The transition linearly converges from the final explicit-period growth,
+    payout, and cost of equity to stable assumptions. Dividends are expressed
+    per share, so the resulting value is also a per-share price.
+    """
+
+    dividends = np.asarray(tuple(explicit_dividends), dtype=float)
+    if dividends.ndim != 1 or dividends.size == 0:
+        raise ValueError("explicit_dividends must be a non-empty sequence")
+    if not np.all(np.isfinite(dividends)) or np.any(dividends < 0):
+        raise ValueError("explicit_dividends must be finite and non-negative")
+    if transition_years <= 0:
+        raise ValueError("transition_years must be positive")
+    if ending_eps <= 0:
+        raise ValueError("ending_eps must be positive")
+    if stable_cost_of_equity <= stable_eps_growth:
+        raise ValueError("stable cost of equity must exceed stable EPS growth")
+    if not 0 <= starting_payout_ratio <= 1 or not 0 <= stable_payout_ratio <= 1:
+        raise ValueError("payout ratios must be between zero and one")
+
+    explicit_periods = np.arange(1, dividends.size + 1, dtype=float)
+    pv_explicit = float(
+        np.sum(dividends / (1.0 + initial_cost_of_equity) ** explicit_periods)
+    )
+
+    growth_path = np.linspace(
+        starting_eps_growth, stable_eps_growth, transition_years + 1
+    )[1:]
+    payout_path = np.linspace(
+        starting_payout_ratio, stable_payout_ratio, transition_years + 1
+    )[1:]
+    cost_path = np.linspace(
+        initial_cost_of_equity, stable_cost_of_equity, transition_years + 1
+    )[1:]
+
+    eps = float(ending_eps)
+    discount_factor = (1.0 + initial_cost_of_equity) ** dividends.size
+    pv_transition = 0.0
+    for growth, payout, cost in zip(growth_path, payout_path, cost_path):
+        eps *= 1.0 + growth
+        transition_dividend = eps * payout
+        discount_factor *= 1.0 + cost
+        pv_transition += transition_dividend / discount_factor
+
+    terminal_dividend = eps * (1.0 + stable_eps_growth) * stable_payout_ratio
+    terminal_value = terminal_dividend / (stable_cost_of_equity - stable_eps_growth)
+    pv_terminal = terminal_value / discount_factor
+    implied_price = pv_explicit + pv_transition + pv_terminal
+
+    return DDMResult(
+        pv_explicit_dividends=pv_explicit,
+        pv_transition_dividends=pv_transition,
+        terminal_value=terminal_value,
+        pv_terminal_value=pv_terminal,
+        implied_price=implied_price,
+    )
+
+
+def weighted_relative_valuation(
+    implied_prices: Iterable[float], weights: Iterable[float]
+) -> float:
+    """Combine valuation-method prices using normalized non-negative weights."""
+
+    prices = np.asarray(tuple(implied_prices), dtype=float)
+    weight_array = np.asarray(tuple(weights), dtype=float)
+    if prices.size == 0 or prices.shape != weight_array.shape:
+        raise ValueError("implied_prices and weights must be non-empty and equal length")
+    if not np.all(np.isfinite(prices)) or not np.all(np.isfinite(weight_array)):
+        raise ValueError("prices and weights must be finite")
+    if np.any(weight_array < 0) or weight_array.sum() <= 0:
+        raise ValueError("weights must be non-negative with a positive sum")
+    return float(np.average(prices, weights=weight_array))
 
 
 def sensitivity_table(

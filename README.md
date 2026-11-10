@@ -18,6 +18,9 @@ timing assumptions, and quantifies valuation uncertainty.
   **CNY 626.0/share**.
 - Added reproducible WACC/growth sensitivity analysis and a seeded 10,000-draw
   Monte Carlo simulation.
+- Rebuilt the three-stage DDM to CNY 585.8/share, within 0.5% of the report's
+  CNY 583.3 base case, and reproduced the CNY 665 weighted relative valuation.
+- Added published DCF/DDM bull-base-bear cases and a multi-method football field.
 
 This timing check is deliberate: the project treats valuation as an auditable
 modeling exercise rather than a single target-price output.
@@ -32,6 +35,11 @@ terminal growth, CNY 20.382bn of net cash, and 689m diluted shares. The code:
 3. bridges enterprise value to equity value;
 4. tests WACC and terminal-growth combinations; and
 5. simulates WACC, terminal growth, and FCFF-level uncertainty with a fixed seed.
+
+Cross-checks include a three-stage DDM with a nine-year transition period and
+a weighted relative valuation using EV/EBITDA (75%), EV/EBIT (20%), and P/E
+(5%). Published scenario outputs are kept separate from independently rebuilt
+model results so the provenance of every number remains clear.
 
 The Monte Carlo assumptions are simplified and explicitly documented. They do
 not claim to recreate undisclosed workbook formulas from the original team model.
@@ -61,6 +69,8 @@ Generated outputs include:
 
 - `reports/figures/dcf_sensitivity.png`
 - `reports/figures/monte_carlo_distribution.png`
+- `reports/figures/scenario_comparison.png`
+- `reports/figures/valuation_football_field.png`
 - `data/processed/sensitivity_prices.csv`
 - `data/processed/monte_carlo_summary.csv`
 

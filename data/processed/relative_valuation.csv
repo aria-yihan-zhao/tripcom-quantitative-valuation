@@ -1,0 +1,4 @@
+method,multiple,forecast_metric_mcny,implied_price_cny,weight
+EV/EBITDA,22.48,17973,615.9,0.75
+EV/EBIT,27.65,17991,751.6,0.20
+P/E,37.03,19633,1055.1,0.05

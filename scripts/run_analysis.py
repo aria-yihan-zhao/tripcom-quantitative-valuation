@@ -18,6 +18,8 @@ from src.valuation import (  # noqa: E402
     monte_carlo_prices,
     reported_summary_price,
     sensitivity_table,
+    three_stage_ddm,
+    weighted_relative_valuation,
 )
 
 
@@ -118,6 +120,100 @@ def main() -> None:
     plt.savefig(figures / "monte_carlo_distribution.png", dpi=180)
     plt.close()
 
+    ddm_inputs = pd.read_csv(ROOT / "data" / "processed" / "ddm_inputs.csv")
+    ddm_scenarios = pd.read_csv(ROOT / "data" / "processed" / "ddm_scenarios.csv")
+    modeled_ddm_prices = []
+    for row in ddm_scenarios.itertuples(index=False):
+        result = three_stage_ddm(
+            ddm_inputs["dps_cny"],
+            initial_cost_of_equity=0.0962,
+            ending_eps=float(ddm_inputs["eps_cny"].iloc[-1]),
+            transition_years=9,
+            starting_eps_growth=0.09,
+            starting_payout_ratio=float(ddm_inputs["payout_ratio"].iloc[-1]),
+            stable_eps_growth=row.stable_eps_growth,
+            stable_payout_ratio=row.stable_payout_ratio,
+            stable_cost_of_equity=row.stable_cost_of_equity,
+        )
+        modeled_ddm_prices.append(result.implied_price)
+    ddm_scenarios["modeled_price_cny"] = modeled_ddm_prices
+    ddm_scenarios.to_csv(
+        ROOT / "data" / "processed" / "ddm_scenario_results.csv", index=False
+    )
+
+    dcf_scenarios = pd.read_csv(ROOT / "data" / "processed" / "dcf_scenarios.csv")
+    scenario_long = pd.concat(
+        [
+            dcf_scenarios[["scenario", "published_price_cny"]].assign(method="DCF"),
+            ddm_scenarios[["scenario", "published_price_cny"]].assign(method="DDM"),
+        ],
+        ignore_index=True,
+    )
+    plt.figure(figsize=(9, 5.5))
+    sns.barplot(
+        data=scenario_long,
+        x="scenario",
+        y="published_price_cny",
+        hue="method",
+        order=["Bear", "Base", "Bull"],
+        palette=["#2f5597", "#70ad47"],
+    )
+    plt.axhline(REFERENCE_PRICE, color="#c0392b", linestyle="--", label="Reference price")
+    plt.ylabel("Implied price (CNY/share)")
+    plt.xlabel("")
+    plt.title("Published Scenario Valuation Cross-Check")
+    plt.tight_layout()
+    plt.savefig(figures / "scenario_comparison.png", dpi=180)
+    plt.close()
+
+    relative = pd.read_csv(ROOT / "data" / "processed" / "relative_valuation.csv")
+    relative_price = weighted_relative_valuation(
+        relative["implied_price_cny"], relative["weight"]
+    )
+
+    football = pd.DataFrame(
+        [
+            {
+                "method": "DCF scenarios",
+                "low": dcf_scenarios["published_price_cny"].min(),
+                "mid": float(dcf_scenarios.loc[dcf_scenarios.scenario == "Base", "published_price_cny"].iloc[0]),
+                "high": dcf_scenarios["published_price_cny"].max(),
+            },
+            {
+                "method": "DDM scenarios",
+                "low": ddm_scenarios["published_price_cny"].min(),
+                "mid": float(ddm_scenarios.loc[ddm_scenarios.scenario == "Base", "published_price_cny"].iloc[0]),
+                "high": ddm_scenarios["published_price_cny"].max(),
+            },
+            {
+                "method": "Relative valuation",
+                "low": relative["implied_price_cny"].min(),
+                "mid": relative_price,
+                "high": relative["implied_price_cny"].max(),
+            },
+            {
+                "method": "Monte Carlo (5th-95th)",
+                "low": np.percentile(prices, 5),
+                "mid": np.median(prices),
+                "high": np.percentile(prices, 95),
+            },
+        ]
+    )
+    football.to_csv(ROOT / "data" / "processed" / "football_field.csv", index=False)
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    y = np.arange(len(football))
+    ax.hlines(y, football["low"], football["high"], color="#4472c4", linewidth=8, alpha=0.75)
+    ax.scatter(football["mid"], y, marker="D", s=85, color="#1f1f1f", zorder=3, label="Base / weighted value")
+    ax.axvline(REFERENCE_PRICE, color="#c0392b", linestyle="--", label="Reference price: CNY 517")
+    ax.set_yticks(y, football["method"])
+    ax.set_xlabel("Implied price (CNY/share)")
+    ax.set_title("Trip.com Valuation Football Field")
+    ax.invert_yaxis()
+    ax.legend(loc="lower right")
+    plt.tight_layout()
+    plt.savefig(figures / "valuation_football_field.png", dpi=180)
+    plt.close()
+
     print("Trip.com valuation audit")
     print(f"Standard 9-period DCF: CNY {standard.implied_price:,.2f}")
     print(f"Source-model 8-period terminal timing: CNY {source_timing.implied_price:,.2f}")
@@ -125,6 +221,9 @@ def main() -> None:
     print(f"Monte Carlo median: CNY {np.median(prices):,.2f}")
     print(f"Monte Carlo 5th-95th percentile: CNY {np.percentile(prices, 5):,.2f} - {np.percentile(prices, 95):,.2f}")
     print(f"Probability above CNY {REFERENCE_PRICE:,.0f}: {(prices > REFERENCE_PRICE).mean():.1%}")
+    print(f"Modeled base DDM: CNY {ddm_scenarios.loc[ddm_scenarios.scenario == 'Base', 'modeled_price_cny'].iloc[0]:,.2f}")
+    print("Published base DDM: CNY 583.30")
+    print(f"Weighted relative valuation: CNY {relative_price:,.2f}")
 
 
 if __name__ == "__main__":
