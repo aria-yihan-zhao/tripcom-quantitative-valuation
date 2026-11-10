@@ -1,5 +1,7 @@
 # Trip.com Quantitative Valuation
 
+![Python tests](https://github.com/aria-yihan-zhao/tripcom-quantitative-valuation/actions/workflows/tests.yml/badge.svg)
+
 An auditable Python valuation of Trip.com Group that reproduces the core DCF
 conclusion from a CFA Institute Research Challenge team report, tests the model's
 timing assumptions, and quantifies valuation uncertainty.
@@ -61,6 +63,9 @@ Generated outputs include:
 - `reports/figures/monte_carlo_distribution.png`
 - `data/processed/sensitivity_prices.csv`
 - `data/processed/monte_carlo_summary.csv`
+
+For a recruiter-friendly walkthrough with executed tables and charts, open
+[`notebooks/01_tripcom_valuation.ipynb`](notebooks/01_tripcom_valuation.ipynb).
 
 ## Data and scope
 
